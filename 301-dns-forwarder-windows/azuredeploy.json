@@ -1,0 +1,230 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        },
+        "virtualMachineBaseName": {
+            "type": "string",
+            "defaultValue": "dns-proxy",
+            "metadata": {
+                "description": "Base VM/Resource name."
+            }
+        },
+        "virtualMachineCount": {
+            "type": "int",
+            "defaultValue": 2,
+            "metadata": {
+                "description": "Number of VMs to put in this cluster"
+            }
+        },
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "User name for the Virtual Machine."
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Password for the Virtual Machine."
+            }
+        },
+        "virtualNetworkName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the virtual network you want to use"
+            }
+        },
+        "virtualNetworkResourceGroupName": {
+            "type": "string",
+            "metadata": {
+                "description": "Resource Group of the virtual network you want to use"
+            }
+        },
+        "virtualNetworkSubnetName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the subnet in the virtual network you want to use"
+            }
+        },
+        "upstreamDNSServerIPs": {
+            "type": "string",
+            "metadata": {
+                "description": "A comma delimited list of IP addresses (V4 or V6) of the upstream DNS servers. DSC will preserve the order of this list when applying forwarding."
+            }
+        },
+        "dscModulesUrl": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "URL for the DSC configuration module. NOTE: Can be a Github url(raw) to the zip file"
+            }
+        }
+    },
+    "variables": {
+        "availabilitySetName": "[concat(parameters('virtualMachineBaseName'),'-avs')]",
+        "virtualNetworkId": "[resourceId(parameters('virtualNetworkResourceGroupName'),'Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+        "networkInterfaceNameSuffix": "-nic",
+        "networkSecurityGroupName": "[concat(parameters('virtualMachineBaseName'),'-nsg')]",
+        "subnetRef": "[concat(variables('virtualNetworkId'), '/subnets/', parameters('virtualNetworkSubnetName'))]"
+    },
+    "resources": [{
+            "apiVersion": "2018-06-01",
+            "type": "Microsoft.Compute/availabilitySets",
+            "name": "[variables('availabilitySetName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "platformFaultDomainCount": "2",
+                "platformUpdateDomainCount": "2"
+            },
+            "sku": {
+                "name": "Aligned"
+            }
+        },
+        {
+            "name": "[concat(parameters('virtualMachineBaseName'), copyindex())]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2018-04-01",
+            "location": "[parameters('location')]",
+            "copy": {
+                "name": "virtualMachineSet",
+                "count": "[parameters('virtualMachineCount')]"
+            },
+            "dependsOn": [
+                "[concat('Microsoft.Compute/availabilitySets/', variables('availabilitySetName'))]",
+                "[concat('Microsoft.Network/networkInterfaces/', parameters('virtualMachineBaseName'), copyindex(), variables('networkInterfaceNameSuffix'))]"
+            ],
+            "properties": {
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets',variables('availabilitySetName'))]"
+                },
+                "osProfile": {
+                    "computerName": "[concat(parameters('virtualMachineBaseName'), copyindex())]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]",
+                    "windowsConfiguration": {
+                        "provisionVmAgent": "true"
+                    }
+                },
+                "hardwareProfile": {
+                    "vmSize": "Standard_B2s"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "2016-Datacenter-Server-Core",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "Standard_LRS"
+                        }
+                    },
+                    "dataDisks": []
+                },
+                "networkProfile": {
+                    "networkInterfaces": [{
+                        "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('virtualMachineBaseName'), copyindex(), variables('networkInterfaceNameSuffix')))]"
+                    }]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": false
+                    }
+                }
+            }
+        },
+        {
+            "name": "[concat(parameters('virtualMachineBaseName'), copyindex(), variables('networkInterfaceNameSuffix'))]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2018-04-01",
+            "location": "[parameters('location')]",
+            "copy": {
+                "name": "nicSet",
+                "count": "[parameters('virtualMachineCount')]"
+            },
+            "dependsOn": [
+                "[concat('Microsoft.Network/networkSecurityGroups/', variables('networkSecurityGroupName'))]"
+            ],
+            "properties": {
+                "ipConfigurations": [{
+                    "name": "ipconfig1",
+                    "properties": {
+                        "subnet": {
+                            "id": "[variables('subnetRef')]"
+                        },
+                        "privateIPAllocationMethod": "Dynamic"
+                    }
+                }],
+                "dnsSettings": {
+                    "dnsServers": "[split(parameters('upstreamDNSServerIPs'),',')]"
+                },
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                }
+            }
+        },
+        {
+            "name": "[variables('networkSecurityGroupName')]",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2018-01-01",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [{
+                    "name": "DNS",
+                    "properties": {
+                        "priority": 310,
+                        "protocol": "*",
+                        "access": "Allow",
+                        "direction": "Inbound",
+                        "sourceApplicationSecurityGroups": [],
+                        "destinationApplicationSecurityGroups": [],
+                        "sourceAddressPrefix": "*",
+                        "sourcePortRange": "*",
+                        "destinationAddressPrefix": "*",
+                        "destinationPortRanges": [
+                            "43",
+                            "53"
+                        ]
+                    }
+                }]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(parameters('virtualMachineBaseName'), copyindex(),'/dsc-dns')]",
+            "apiVersion": "2015-05-01-preview",
+            "location": "[parameters('location')]",
+            "copy": {
+                "name": "dscExtensionSet",
+                "count": "[parameters('virtualMachineCount')]"
+            },
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineBaseName'), copyindex())]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Powershell",
+                "type": "DSC",
+                "typeHandlerVersion": "2.19",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "ModulesUrl": "[parameters('dscModulesUrl')]",
+                    "ConfigurationFunction": "SetupDNSProxyRole.ps1\\SetupDNSProxyRole",
+                    "Properties": {
+                        "MachineName": "[concat(parameters('virtualMachineBaseName'), copyindex())]",
+                        "UpstreamDNSServerIPs": "[parameters('upstreamDNSServerIPs')]"
+                    }
+                },
+                "protectedSettings": null
+            }
+        }
+    ]
+}

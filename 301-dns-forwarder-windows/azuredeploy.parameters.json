@@ -1,0 +1,24 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adminUsername": {
+            "value": "GEN-UNIQUE"
+        },
+        "adminPassword": {
+            "value": "GEN-PASSWORD"
+        },
+        "virtualNetworkName": {
+            "value": "GET-PREREQ-virtualNetworkName"
+        },
+        "virtualNetworkResourceGroupName": {
+            "value": "GET-PREREQ-virtualNetworkResourceGroupName"
+        },
+        "virtualNetworkSubnetName": {
+            "value": "GET-PREREQ-virtualNetworkSubnetName"
+        },
+        "upstreamDNSServerIPs": {
+            "value": "GET-PREREQ-upstreamDNSServerIPs"
+        }
+    }
+}
