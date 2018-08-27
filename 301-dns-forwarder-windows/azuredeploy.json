@@ -61,7 +61,7 @@
         },
         "dscModulesUrl": {
             "type": "string",
-            "defaultValue": "",
+            "defaultValue": "https://github.com/adouglas/azure-quickstart-templates/raw/301-dns-forwarder-windows/301-dns-forwarder-windows/dsc/SetupDNSProxyRole.zip",
             "metadata": {
                 "description": "URL for the DSC configuration module. NOTE: Can be a Github url(raw) to the zip file"
             }
