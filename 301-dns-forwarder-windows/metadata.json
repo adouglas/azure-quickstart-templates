@@ -1,0 +1,8 @@
+{
+    "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+    "itemDisplayName": "Windows based DNS forwarder set",
+    "description": "Deploy a number of Windows Server 2016 Core VMs into an availability set, adds the Role DNS, and configures DNS forwarding. All nodes share the same set of DNS forwarding rules.",
+    "summary": "Deploy a VM availability set with a given number of Windows Server 2016 Core machines. Each machine has the Role DNS installed, and DNS forwarding set to a prescribed IP address (or list of IP addresses). Deployment is carried out to an existing VNet.",
+    "githubUsername": "adouglas",
+    "dateUpdated": "2018-08-28"
+}
