@@ -12,7 +12,7 @@ This template shows how to create a Windows-based NPS RADIUS server which could 
 ## Example usage
 In this example use a VM is deployed to vnet-a with the NPS role installed. Users access the VNet via an Azure Virtual Network Gateway. Authentication is provided through the Gateway via RADIUS. The NPS VM is joined to the domain contoso.com via an AD DS instance hosted in vnet-a.
 
-![Peered AD DS RADIUS](https://github.com/adouglas/azure-quickstart-templates/raw/301-radius-vm-domain-joined/images/vnet-gateway-radius-auth-adds.png)
+![Peered AD DS RADIUS](https://github.com/adouglas/azure-quickstart-templates/raw/301-radius-server-ad-joined/301-radius-vm-domain-joined/images/vnet-gateway-radius-auth-adds.png)
 
 
 ## More information
